@@ -8,12 +8,17 @@ import (
 )
 
 var (
-	hostname    = flag.String("hostname", "truenas-tailscale", "hostname to use in the tailnet")
-	proxyTarget = flag.String("proxy-target", "http://127.0.0.1:80", "proxy to target requests to")
+	hostname = flag.String("hostname", "truenas-tailscale", "Hostname to use in the tailnet.")
+	truenas  = flag.String("truenas-url", "http://127.0.0.1:80", "Base URL of the TrueNAS UI")
 )
 
 func main() {
 	flag.Parse()
 
-	log.Fatal(tsproxy.New(*hostname, *proxyTarget))
+	// Reverse proxy TrueNAS on the TailScale network.
+	proxy, err := tsproxy.New(*hostname, *truenas)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Fatal(proxy.Start())
 }
