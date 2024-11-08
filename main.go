@@ -23,10 +23,8 @@ func main() {
 
 	remote, err := url.Parse(*proxyTarget)
 	if err != nil {
-		log.Fatal("could not parse proxy target", *proxyTarget)
+		log.Fatal("could not parse proxy target (try https://example.com) ", *proxyTarget)
 	}
-
-	proxy := httputil.NewSingleHostReverseProxy(remote)
 
 	// Set up tailscale server, listen on addr
 	s := new(tsnet.Server)
@@ -45,7 +43,14 @@ func main() {
 		log.Fatal(err)
 	}
 
-	h := proxyHandler{tsClient: lc, proxy: proxy}
+	h := proxyHandler{
+		tsClient: lc,
+		proxy: &httputil.ReverseProxy{
+			Rewrite: func(r *httputil.ProxyRequest) {
+				r.SetURL(remote)
+			},
+		},
+	}
 	log.Fatal(http.Serve(ln, &h))
 }
 
