@@ -50,7 +50,7 @@ jobs:
       - name: Generate Docker Hub attestation
         uses: actions/attest-build-provenance@v1
         with:
-          subject-name: dwurf/truenas-tailscale
+          subject-name: index.docker.io/dwurf/truenas-tailscale
           subject-digest: ${{ steps.push.outputs.digest }}
           push-to-registry: true
 
