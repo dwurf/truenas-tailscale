@@ -103,9 +103,9 @@ func (ph ProxyHandler) rewrite(r *httputil.ProxyRequest) {
 }
 
 // fixRedirects fixes incorrect redirects from the proxied service in an http.ReverseProxy.
-// If the service being proxied returns a 302 redirect containing fromURL, this function
-// will replace it with toURL.
-func (ph ProxyHandler) fixRedirects(fromURL string) func(w *http.Response) error {
+// If the service being proxied returns a 302 redirect containing the host header it received,
+// this function will replace it with rewriteTo.
+func (ph ProxyHandler) fixRedirects(rewriteTo string) func(w *http.Response) error {
 	return func(w *http.Response) error {
 		if w.StatusCode != 302 {
 			// Ignore anything other than temporary redirects.
@@ -117,9 +117,9 @@ func (ph ProxyHandler) fixRedirects(fromURL string) func(w *http.Response) error
 			return nil
 		}
 
-		if strings.Contains(location, fromURL) {
+		if strings.Contains(location, ph.Target.Host) {
 			w.Header.Set("Location",
-				strings.Replace(location, fromURL, ph.Target.Host, 1))
+				strings.Replace(location, ph.Target.Host, rewriteTo, 1))
 		}
 		return nil
 	}
