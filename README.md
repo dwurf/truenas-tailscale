@@ -20,10 +20,12 @@ export TS_AUTHKEY=tskey-auth-abc123...
 export TS_HOSTNAME=truenas-tailscale
 export TRUENAS_API_KEY=1-OKabc123...
 
+pgrep truenas-tailscale && exit 1
+
 nohup /mnt/tank-1/path/to/truenas-tailscale >> /mnt/tank-1/path/to/truenas-tailscale.log &
 ```
 4. Copy the `tailscale-start.sh` script and the [binary](github.com/dwurf/truenas-tailscale/releases/latest) onto your NAS. Set the execute bit on both files.
-5. Under System > Advanced > Startup / Shutdown scripts, create a new script:
+5. Under System > Advanced Settings > Init/Shutdown Scripts, create a new script:
  - Description: `truenas-tailscale`
  - Type: `Script`
  - Script: `/mnt/tank-1/path/to/tailscale-start.sh`

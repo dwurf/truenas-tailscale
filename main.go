@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"net/url"
 	"os"
 	"slices"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/dwurf/truenas-tailscale/truenas"
 	"github.com/dwurf/truenas-tailscale/tsproxy"
+	"github.com/hashicorp/go-retryablehttp"
 )
 
 // Check for apps every pollFrequency seconds.
@@ -51,7 +53,7 @@ func main() {
 	}
 	// Connect to TrueNAS REST API.
 	wsEndpoint := fmt.Sprintf("%s/api/v2.0", truenasURL)
-	client := truenas.NewClient(wsEndpoint, cfg.truenasAPIKey)
+	client := truenas.NewClient(wsEndpoint, cfg.truenasAPIKey, httpClient())
 
 	// If hostname is not configured, get it from the API.
 	// This doubles as a connectivity check.
@@ -134,4 +136,8 @@ func (p *proxySet) ensure(appName string, proxyTarget *url.URL) {
 		log.Printf("Updating app %s, was proxied to %s, now %s", appName, &oldProxy.Target, proxyTarget)
 		oldProxy.Target = *proxyTarget
 	}
+}
+
+func httpClient() *http.Client {
+	return retryablehttp.NewClient().StandardClient()
 }

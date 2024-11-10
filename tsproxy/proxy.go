@@ -71,10 +71,8 @@ func New(hostname string, target *url.URL) (*ProxyHandler, error) {
 			ln.Close()
 		},
 	}
-	h.proxy.Rewrite = func(r *httputil.ProxyRequest) {
-		r.SetURL(&h.Target)
-	}
-	h.proxy.ModifyResponse = fixRedirects(target.Host, fqdn)
+	h.proxy.Rewrite = h.rewrite
+	h.proxy.ModifyResponse = h.fixRedirects(fqdn)
 	return &h, nil
 }
 
@@ -100,10 +98,14 @@ func (ph *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ph.proxy.ServeHTTP(w, r)
 }
 
+func (ph ProxyHandler) rewrite(r *httputil.ProxyRequest) {
+	r.SetURL(&ph.Target)
+}
+
 // fixRedirects fixes incorrect redirects from the proxied service in an http.ReverseProxy.
 // If the service being proxied returns a 302 redirect containing fromURL, this function
 // will replace it with toURL.
-func fixRedirects(fromURL, toURL string) func(w *http.Response) error {
+func (ph ProxyHandler) fixRedirects(fromURL string) func(w *http.Response) error {
 	return func(w *http.Response) error {
 		if w.StatusCode != 302 {
 			// Ignore anything other than temporary redirects.
@@ -117,7 +119,7 @@ func fixRedirects(fromURL, toURL string) func(w *http.Response) error {
 
 		if strings.Contains(location, fromURL) {
 			w.Header.Set("Location",
-				strings.Replace(location, fromURL, toURL, 1))
+				strings.Replace(location, fromURL, ph.Target.Host, 1))
 		}
 		return nil
 	}

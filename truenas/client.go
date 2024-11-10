@@ -11,14 +11,18 @@ import (
 )
 
 type Client struct {
-	client http.Client
+	client *http.Client
 
 	apiKey  string
 	baseURL string
 }
 
-func NewClient(baseURL, apiKey string) Client {
+func NewClient(baseURL, apiKey string, client *http.Client) Client {
+	if client == nil {
+		client = &http.Client{}
+	}
 	return Client{
+		client:  client,
 		baseURL: baseURL,
 		apiKey:  apiKey,
 	}
