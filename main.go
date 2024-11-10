@@ -139,5 +139,7 @@ func (p *proxySet) ensure(appName string, proxyTarget *url.URL) {
 }
 
 func httpClient() *http.Client {
-	return retryablehttp.NewClient().StandardClient()
+	c := retryablehttp.NewClient()
+	c.RetryMax = 10
+	return c.StandardClient()
 }
