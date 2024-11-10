@@ -2,38 +2,50 @@
 
 `truenas-tailscale` is a companion program for TrueNAS installs.
 
-It will make your TrueNAS install and app portals, available on your Tailnet automagically, complete with LetsEncrypt certificates.
+It will make your TrueNAS install and app portals available on your Tailnet automagically, complete with LetsEncrypt certificates.
+
+## Why?
+
+Compared to installing the Tailscale app, this tool gives you:
+
+- Internal DNS names for each of your apps.
+- Automatic TLS for your apps and TrueNAS UI.
+
+## Limitations
+
+- Only forwards the first Portal for a given App.
+- No support for other services (such as SSH, MinIO) over the Tailnet right now.
+- Tailscale Auth Key must be renewed every 90 days right now.
 
 ## Installation
 
-1. Configure a TrueNAS key. In the TrueNAS UI: Settings > API Keys > Add.
+0. Sign up for Tailscale (if you haven't already). Enable [MagicDNS and HTTPS](https://tailscale.com/kb/1153/enabling-https).
+1. Configure a Tailscale auth key in the [web portal](https://login.tailscale.com/admin/settings/keys) under Settings > Keys.
+ - Reusable: `True`.
+ - Expiration: `90 days` (Note: you will need a new key every 90 days).
+ - Ephemeral: `True` (Recommended).
+ - Tags: `tag:truenas-tailscale` (optional - for access control and management).
+2. Configure a TrueNAS API key. In the TrueNAS UI: Settings > API Keys > Add.
  - Settings is in the top-right of the TrueNAS UI, under the user profile pic, next to the power icon.
  - You can also find it here: https://truenas/ui/apikeys (use your own truenas hostname).
-2. Configure a TailScale auth key in the [web portal](https://login.tailscale.com/admin/settings/keys) under Settings > Keys.
- - Reusable: True
- - Expiration: 90 days (Note: you will need a new key every 90 days)
- - Ephemeral: True (Recommended)
- - Tags: (optional - for access control)
-3. Create a file called `tailscale-start.sh` that looks like this:
-```
-export TS_AUTHKEY=tskey-auth-abc123...
-export TS_HOSTNAME=truenas-tailscale
-export TRUENAS_API_KEY=1-OKabc123...
-
-pgrep truenas-tailscale && exit 1
-
-nohup /mnt/tank-1/path/to/truenas-tailscale >> /mnt/tank-1/path/to/truenas-tailscale.log &
-```
-4. Copy the `tailscale-start.sh` script and the [binary](github.com/dwurf/truenas-tailscale/releases/latest) onto your NAS. Set the execute bit on both files.
-5. Under System > Advanced Settings > Init/Shutdown Scripts, create a new script:
- - Description: `truenas-tailscale`
- - Type: `Script`
- - Script: `/mnt/tank-1/path/to/tailscale-start.sh`
- - When: `Post Init`
- - Enabled: `True`
- - Timeout: `10`
+3. Create a TrueNAS custom app under Apps > Discover Apps > Custom App.
+ - Application Name: `truenas-tailscale`.
+ - Repository: `dwurf/truenas-tailscale`.
+ - Environment Variables
+   - `TS_AUTHKEY`: set to the key you created in step 1.
+   - `TS_HOSTNAME`: `truenas-tailscale` (or whatever you want your node name to be called in Tailscale).
+   - `TRUENAS_API_KEY`: set to the key you created in step 2.
+   - `TRUENAS_HOSTNAME`: set to `172.16.0.1` (the default IP for truenas from within Docker).
+ - Restart Policy: `Unless Stopped`.
+ - Create a Storage Configuration.
+   - Type `ixVolume`.
+   - Read Only: `False`.
+   - Mount Path: `/root/.config/truenas-tailscale`.
+   - Dataset Name: `tailscale-config`.
 
 ## Detailed Usage
+
+The command can be downloaded and run directly from the Releases page, see instructions below.
 
 ```
 $ truenas-tailscale -h
@@ -54,3 +66,4 @@ $ export TS_AUTHKEY=tskey-auth-abc123 TRUENAS_API_KEY=1-OKabc123
 $ truenas-tailscale -tailscale-hostname my-truenas-host
 ```
 
+Note: the command can be run anywhere that can connect to your NAS, it doesn't have to be directly on the NAS.

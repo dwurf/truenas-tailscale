@@ -11,5 +11,6 @@ RUN go build -o truenas-tailscale .
 FROM alpine
 
 COPY --from=builder /usr/src/app/truenas-tailscale /
+VOLUME /root/.config/truenas-tailscale/
 
 CMD ["/truenas-tailscale"]
