@@ -6,26 +6,38 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"tailscale.com/tsnet"
 )
 
-// New creates a new tailscale node that proxies all traffic on hostname:443 to target.
-func New(hostname, target string) (*proxyHandler, error) {
-	remote, err := url.Parse(target)
-	if err != nil {
-		return nil, fmt.Errorf("could not parse proxy target %s (try like https://example.com) ", target)
+// New creates a new tailscale node that can proxy all traffic on hostname:443 to target.
+func New(hostname string, target *url.URL) (*ProxyHandler, error) {
+	// Get auth key from the environment. If it's an OAuth client key, we'll have to create
+	// an auth key for authenticating nodes.
+	authKey := os.Getenv("TS_AUTHKEY")
+	if strings.HasPrefix(authKey, "tskey-client-") {
+		// TODO: handle this case.
+		// Something like tailscale.NewClient(); client.CreateKey()
+		log.Fatal("Sorry, OAuth keys are not yet supported. Generate an auth key at https://login.tailscale.com/admin/settings/keys")
 	}
 
 	// Set up tailscale server, listen on addr.
+	cfgPath, err := os.UserConfigDir()
+	if err != nil {
+		return nil, err
+	}
 	ts := &tsnet.Server{
-		Hostname:  hostname,
-		Ephemeral: true,
+		Dir:      filepath.Join(cfgPath, "truenas-tailscale", hostname),
+		Hostname: hostname,
+		AuthKey:  authKey, // If blank, a login link will appear on the CLI.
 	}
 
 	// Bind to HTTPS port.
@@ -50,37 +62,41 @@ func New(hostname, target string) (*proxyHandler, error) {
 	fqdn := fmt.Sprintf("%s.%s", hostname, status.CurrentTailnet.MagicDNSSuffix)
 
 	// Configure proxy
-	return &proxyHandler{
+	h := ProxyHandler{
 		listener: ln,
-		proxy: &httputil.ReverseProxy{
-			Rewrite: func(r *httputil.ProxyRequest) {
-				r.SetURL(remote)
-			},
-			ModifyResponse: fixRedirects(remote.Host, fqdn),
-		},
+		Target:   *target,
+		proxy:    &httputil.ReverseProxy{},
 		closer: func() {
 			ts.Close()
 			ln.Close()
 		},
-	}, nil
+	}
+	h.proxy.Rewrite = func(r *httputil.ProxyRequest) {
+		r.SetURL(&h.Target)
+	}
+	h.proxy.ModifyResponse = fixRedirects(target.Host, fqdn)
+	return &h, nil
 }
 
-type proxyHandler struct {
+type ProxyHandler struct {
 	listener net.Listener
 
 	proxy  *httputil.ReverseProxy
 	closer func()
+
+	// Target can be updated while running.
+	Target url.URL
 }
 
 // Start starts proxying requests from the tailnet to the proxy target.
-func (ph *proxyHandler) Start() error {
+func (ph *ProxyHandler) Start() error {
 	if ph.closer != nil {
 		defer ph.closer()
 	}
 	return http.Serve(ph.listener, ph)
 }
 
-func (ph *proxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (ph *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ph.proxy.ServeHTTP(w, r)
 }
 
