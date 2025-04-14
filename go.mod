@@ -2,7 +2,10 @@ module github.com/dwurf/truenas-tailscale
 
 go 1.23.2
 
-require tailscale.com v1.76.6
+require (
+	github.com/hashicorp/go-retryablehttp v0.7.7
+	tailscale.com v1.76.6
+)
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
@@ -37,10 +40,9 @@ require (
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/nftables v0.2.1-0.20240414091927-5e242ec57806 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/gorilla/csrf v1.7.2 // indirect
+	github.com/gorilla/csrf v1.7.3 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
-	github.com/hashicorp/go-retryablehttp v0.7.7 // indirect
 	github.com/hdevalence/ed25519consensus v0.2.0 // indirect
 	github.com/illarion/gonotify/v2 v2.0.3 // indirect
 	github.com/insomniacslk/dhcp v0.0.0-20231206064809-8c70d406f6d2 // indirect
