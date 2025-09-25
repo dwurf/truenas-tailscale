@@ -1,1 +1,3 @@
 /dist
+.headscale/
+!.headscale/config.yml
