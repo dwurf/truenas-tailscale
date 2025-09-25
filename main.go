@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"iter"
 	"log"
 	"net/http"
 	"net/url"
@@ -23,6 +24,7 @@ type config struct {
 	truenasHostname   string
 	tailscaleAPIKey   string
 	tailscaleHostname string
+	headscaleURL      string
 }
 
 func (cfg *config) parse() {
@@ -35,6 +37,7 @@ func (cfg *config) parse() {
 	flag.StringVar(&cfg.truenasHostname, "truenas-hostname", defaultHostname, "TrueNAS hostname or IP (env: TRUENAS_HOSTNAME).")
 	flag.StringVar(&cfg.tailscaleAPIKey, "tailscale-api-key", "", "Tailscale API Key (env: TS_AUTHKEY).")
 	flag.StringVar(&cfg.tailscaleHostname, "tailscale-hostname", os.Getenv("TS_HOSTNAME"), "Hostname to use in the tailnet. Defaults to the hostname configured in TrueNAS (env: TS_HOSTNAME).")
+	flag.StringVar(&cfg.headscaleURL, "headscale-url", os.Getenv("HEADSCALE_URL"), "URL of the Headscale control server to use. Defaults to using the Tailscale service. (env: HEADSCALE_URL).")
 
 	flag.Parse()
 
@@ -66,7 +69,7 @@ func main() {
 	}
 
 	// Start a background process to monitor apps.
-	proxies := make(proxySet)
+	proxies := newProxySet(cfg.tailscaleAPIKey, cfg.headscaleURL)
 	go func() {
 		for {
 			apps, err := client.Apps()
@@ -93,14 +96,14 @@ func main() {
 				proxies.ensure(app.Name, proxyTarget)
 			}
 
-			for name := range proxies {
+			for name := range proxies.All() {
 				i := slices.IndexFunc(apps, func(app truenas.App) bool { return app.Name == name })
 				if i < 0 {
 					log.Printf("App %s removed, removing proxy.", name)
-					delete(proxies, name)
+					proxies.delete(name)
 				} else if apps[i].State != truenas.StateRunning {
 					log.Printf("Removing proxy for app %s: state is %s.", name, apps[i].State)
-					delete(proxies, name)
+					proxies.delete(name)
 				}
 			}
 
@@ -109,26 +112,39 @@ func main() {
 	}()
 
 	// Reverse proxy TrueNAS on the TailScale network.
-	proxy, err := tsproxy.New(cfg.tailscaleHostname, truenasURL)
+	proxy, err := tsproxy.New(cfg.tailscaleHostname, truenasURL, cfg.truenasAPIKey, cfg.headscaleURL)
 	if err != nil {
 		log.Fatal(err)
 	}
 	log.Fatal(proxy.Start())
 }
 
-type proxySet map[string]*tsproxy.ProxyHandler
+// proxySet implements a set of proxies in front of some apps.
+type proxySet struct {
+	headscaleURL string
+	set          map[string]*tsproxy.ProxyHandler
+	tsAPIKey     string
+}
 
-// ensure proxy is running.
+func newProxySet(tsAuthKey, headscaleURL string) *proxySet {
+	return &proxySet{
+		headscaleURL: headscaleURL,
+		set:          make(map[string]*tsproxy.ProxyHandler),
+		tsAPIKey:     tsAuthKey,
+	}
+}
+
+// ensure proxy is running for the app.
 func (p *proxySet) ensure(appName string, proxyTarget *url.URL) {
-	if oldProxy, ok := (*p)[appName]; !ok {
+	if oldProxy, ok := p.set[appName]; !ok {
 		// Only supports the first portal for an app.
-		proxy, err := tsproxy.New(appName, proxyTarget)
+		proxy, err := tsproxy.New(appName, proxyTarget, p.tsAPIKey, p.headscaleURL)
 		if err != nil {
 			log.Printf("Error creating proxy for %s -> %s: %s", appName, proxyTarget, err)
 			return
 		}
 		log.Printf("Registering app %s, proxied to %s", appName, proxyTarget)
-		(*p)[appName] = proxy
+		p.set[appName] = proxy
 		go func() {
 			log.Printf("%s: %s", appName, proxy.Start())
 		}()
@@ -136,6 +152,19 @@ func (p *proxySet) ensure(appName string, proxyTarget *url.URL) {
 		log.Printf("Updating app %s, was proxied to %s, now %s", appName, &oldProxy.Target, proxyTarget)
 		oldProxy.Target = *proxyTarget
 	}
+}
+
+// All returns an iterator over all proxies in the set.
+func (p *proxySet) All() iter.Seq[string] {
+	return func(yield func(string) bool) {
+		for name := range p.set {
+			yield(name)
+		}
+	}
+}
+
+func (p *proxySet) delete(name string) {
+	delete(p.set, name)
 }
 
 func httpClient() *http.Client {

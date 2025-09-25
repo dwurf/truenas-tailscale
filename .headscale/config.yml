@@ -1,0 +1,36 @@
+---
+# config.yml for integration testing against a headscale service.
+
+server_url: http://127.0.0.1:8080
+listen_addr: 127.0.0.1:8080
+disable_check_updates: true
+ephemeral_node_inactivity_timeout: 2m
+unix_socket: .headscale/headscale.sock
+unix_socket_permission: "0770"
+
+# Minimal configuration to run a headscale server follows.
+
+noise:
+  private_key_path: ./noise_private.key
+
+prefixes:
+  v4: 100.64.0.0/10
+  v6: fd7a:115c:a1e0::/48
+
+database:
+  type: sqlite
+
+  # SQLite config
+  sqlite:
+    path: db.sqlite
+
+derp:
+  server:
+    enabled: true
+    automatically_add_embedded_derp_region: true
+    private_key_path: ./derp_server_private.key
+    stun_listen_addr: "0.0.0.0:3478"
+
+dns:
+  magic_dns: false
+  override_local_dns: false

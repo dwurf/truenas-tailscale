@@ -19,10 +19,9 @@ import (
 )
 
 // New creates a new tailscale node that can proxy all traffic on hostname:443 to target.
-func New(hostname string, target *url.URL) (*ProxyHandler, error) {
+func New(hostname string, target *url.URL, authKey string, controlURL string) (*ProxyHandler, error) {
 	// Get auth key from the environment. If it's an OAuth client key, we'll have to create
 	// an auth key for authenticating nodes.
-	authKey := os.Getenv("TS_AUTHKEY")
 	if strings.HasPrefix(authKey, "tskey-client-") {
 		// TODO: handle this case.
 		// Something like tailscale.NewClient(); client.CreateKey()
@@ -35,9 +34,10 @@ func New(hostname string, target *url.URL) (*ProxyHandler, error) {
 		return nil, err
 	}
 	ts := &tsnet.Server{
-		Dir:      filepath.Join(cfgPath, "truenas-tailscale", hostname),
-		Hostname: hostname,
-		AuthKey:  authKey, // If blank, a login link will appear on the CLI.
+		Dir:        filepath.Join(cfgPath, "truenas-tailscale", hostname),
+		Hostname:   hostname,
+		AuthKey:    authKey,    // If blank, a login link will appear on the CLI.
+		ControlURL: controlURL, // If blank, use tailscale - otherwise this should be a headscale control server.
 	}
 
 	// Bind to HTTPS port.

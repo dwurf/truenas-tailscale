@@ -1,8 +1,8 @@
 # TrueNAS Tailscale Companion
 
-`truenas-tailscale` is a companion program for TrueNAS installs.
+`truenas-tailscale` is a companion program for TrueNAS Scale installs.
 
-It will make your TrueNAS install and app portals available on your Tailnet automagically, complete with LetsEncrypt certificates.
+It will make your TrueNAS Scale install and app portals available on your Tailnet automagically, complete with LetsEncrypt certificates.
 
 ## Why?
 
@@ -50,14 +50,16 @@ The command can be downloaded and run directly from the Releases page, see instr
 ```
 $ truenas-tailscale -h
 Usage of truenas-tailscale:
+  -headscale-url string
+        URL of the Headscale control server to use. Defaults to using the Tailscale service. (env: HEADSCALE_URL).
   -tailscale-api-key string
-    	Tailscale API Key (env: TS_AUTHKEY).
+        Tailscale API Key (env: TS_AUTHKEY).
   -tailscale-hostname string
-    	Hostname to use in the tailnet. Defaults to the hostname configured in TrueNAS (env: TS_HOSTNAME).
+        Hostname to use in the tailnet. Defaults to the hostname configured in TrueNAS (env: TS_HOSTNAME).
   -truenas-api-key string
-    	TrueNAS API key (env: TRUENAS_API_KEY).
+        TrueNAS API key (env: TRUENAS_API_KEY).
   -truenas-hostname string
-    	TrueNAS hostname or IP (env: TRUENAS_HOSTNAME). (default "127.0.0.1")
+        TrueNAS hostname or IP (env: TRUENAS_HOSTNAME). (default "127.0.0.1")
 ```
 
 Example:
