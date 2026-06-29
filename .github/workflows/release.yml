@@ -13,8 +13,8 @@ jobs:
     name: release linux/amd64
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - uses: wangyoucao577/go-release-action@v1
+    - uses: actions/checkout@v7
+    - uses: wangyoucao577/go-release-action@98282fb88d19e0d8c3aa8ae626eb10024ad77f6e
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         goos: linux
